@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interactive Worksheet</title>
+<style>
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #dbeafe 100%);
+    color: #1e293b;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 20px;
+    max-width: 900px;
+  }
+  .header h1 {
+    margin: 0 0 6px;
+    font-size: clamp(20px, 3.4vw, 30px);
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(90deg, #4f46e5, #0ea5e9);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .header p {
+    margin: 0;
+    font-size: clamp(13px, 1.8vw, 15px);
+    color: #64748b;
+  }
+
+  /* --- Контейнер рабочего листа --- */
+  .worksheet {
+    position: relative;
+    width: 100%;
+    max-width: 1000px;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.06),
+      0 8px 24px rgba(15, 23, 42, 0.10),
+      0 24px 48px rgba(15, 23, 42, 0.08);
+    line-height: 0;   /* убираем лишние отступы под картинкой */
+  }
+
+  .worksheet img {
+    display: block;
+    width: 100%;
+    height: auto;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  /* --- Поля ввода поверх картинки --- */
+  .answer {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.92);
+    border: 2px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: clamp(11px, 1.4vw, 17px);
+    font-weight: 600;
+    color: #1e293b;
+    text-align: center;
+    padding: 0 4px;
+    outline: none;
+    transition: border-color .18s, box-shadow .18s, background .18s;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+    min-width: 0;
+    font-family: inherit;
+    line-height: normal;
+  }
+  .answer::placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+  }
+  .answer:hover {
+    border-color: #93c5fd;
+    background: #fff;
+  }
+  .answer:focus {
+    border-color: #4f46e5;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
+  }
+
+  /* --- Панель кнопок --- */
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 22px;
+    max-width: 1000px;
+    width: 100%;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 12px 22px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform .1s, box-shadow .18s, background .18s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  button:active { transform: translateY(1px); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.45);
+  }
+
+  .btn-ghost {
+    background: #fff;
+    color: #475569;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 2px 8px rgba(15, 23, 42, 0.06);
+  }
+  .btn-ghost:hover {
+    color: #1e293b;
+    background: #f8fafc;
+  }
+
+  @media (max-width: 600px) {
+    body { padding: 16px 10px 32px; }
+    button { padding: 10px 16px; font-size: 14px; }
+    .answer { border-radius: 6px; border-width: 1.5px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Interactive Worksheet</h1>
+    <p>Type your answers into the boxes below.</p>
+  </div>
+
+  <div class="worksheet" id="worksheet">
+    <img id="bg" src="worksheet.jpg" alt="Worksheet">
+    <!-- answer inputs will be injected here -->
+  </div>
+
+  <div class="toolbar">
+    <button class="btn-ghost"   id="clearBtn">↺ Clear All</button>
+    <button class="btn-primary" id="printBtn">🖨 Print / Save PDF</button>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ==== Координаты полей (в процентах) ====
+  const zones = [
+    { x: 27.15, y: 45.36, w: 21.23, h: 2.92 },
+    { x: 27.36, y: 48.85, w: 20.74, h: 3.28 },
+    { x: 52.94, y: 54.22, w: 43.10, h: 3.65 },
+    { x: 23.57, y: 65.49, w: 25.93, h: 3.39 },
+    { x: 23.36, y: 69.29, w: 26.14, h: 3.33 },
+    { x: 73.61, y: 65.44, w: 22.49, h: 3.39 },
+    { x: 73.54, y: 69.86, w: 23.20, h: 3.07 },
+    { x: 28.48, y: 85.96, w: 20.39, h: 2.97 },
+    { x: 28.27, y: 89.45, w: 20.95, h: 3.23 },
+    { x: 73.82, y: 85.70, w: 23.06, h: 3.23 },
+    { x: 73.33, y: 89.50, w: 24.67, h: 3.13 },
+  ];
+
+  const worksheet = document.getElementById('worksheet');
+  const bg        = document.getElementById('bg');
+  const clearBtn  = document.getElementById('clearBtn');
+  const printBtn  = document.getElementById('printBtn');
+
+  let inputs = [];
+
+  // ==== Создаём поля ввода ====
+  function buildInputs() {
+    worksheet.querySelectorAll('.answer').forEach(el => el.remove());
+    inputs = [];
+
+    zones.forEach((z, i) => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'answer';
+      input.dataset.index = i;
+      input.autocomplete = 'off';
+      input.spellcheck = false;
+      input.placeholder = '...';
+
+      input.style.left   = z.x + '%';
+      input.style.top    = z.y + '%';
+      input.style.width  = z.w + '%';
+      input.style.height = z.h + '%';
+
+      worksheet.appendChild(input);
+      inputs.push(input);
+    });
+  }
+
+  // ==== Очистка ====
+  function clearAll() {
+    inputs.forEach(input => { input.value = ''; });
+    if (inputs[0]) inputs[0].focus();
+  }
+
+  // ==== Кнопки ====
+  clearBtn.addEventListener('click', clearAll);
+  printBtn.addEventListener('click', () => window.print());
+
+  // ==== Старт ====
+  if (bg.complete) {
+    buildInputs();
+  } else {
+    bg.addEventListener('load', buildInputs);
+    bg.addEventListener('error', () => {
+      worksheet.insertAdjacentHTML('beforeend',
+        '<div style="padding:40px;text-align:center;color:#b91c1c;font-size:15px;">' +
+        'Не удалось загрузить <b>worksheet.jpg</b>. Положите картинку рядом с HTML‑файлом.' +
+        '</div>');
+    });
+  }
+
+})();
+</script>
+</body>
+</html>
